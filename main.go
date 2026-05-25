@@ -4,39 +4,44 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	// "strings"
+	"strings"
 )
 
 func stats(email *string) {
 	fmt.Println("Statistics for ", *email, " are as follows : ")
 }
 
-func recursiveRepositoriesScan(path *string) {
+func recursiveRepositoriesScan(path *string) []string {
+
 	entries, err := os.ReadDir(*path)
 
 	if err != nil {
 		fmt.Println(err)
-		return
+		return nil
 	}
+
+	directories := []string{}
 
 	for _,entry := range entries {
 
-		fmt.Println(entry, entry.IsDir())
-
-		if !entry.IsDir() && entry.Name() == ".git" {
-			fmt.Println("Found git project at ", *path)
-		}
-
 		if entry.IsDir() {
-			fmt.Println("Found subdirectory : ", entry.Name())
-			// var builder strings.Builder
-			// builder.WriteString(*path)
-			// builder.WriteString("/")
-			// builder.WriteString(entry.Name())
-			// subPath := builder.String()
-			// recursiveRepositoriesScan(&subPath)
+
+			if entry.Name() == ".git" {
+				fmt.Println("Found git project at ", *path)
+				directories = append(directories,*path)
+			} else {
+				var builder strings.Builder
+				builder.WriteString(*path)
+				builder.WriteString("/")
+				builder.WriteString(entry.Name())
+				subPath := builder.String()
+				subPathDirectories := recursiveRepositoriesScan(&subPath)
+				directories = append(directories,subPathDirectories...)
+			}
 		}
 	}
+
+	return directories
 }
 
 func getDotFilePath() {
@@ -50,6 +55,7 @@ func addNewRepositoriesToFile() {
 func scan(path *string) {
 	fmt.Println("Scanning ", *path, " for git repositories")
 	recursiveRepositoriesScan(path)
+
 	getDotFilePath()
 	addNewRepositoriesToFile()
 	fmt.Println("Successfully added add repositories under ", *path, "to knowledge base.")
