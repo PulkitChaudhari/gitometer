@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"log"
+	"os/User"
 )
 
 func stats(email *string) {
@@ -44,20 +46,55 @@ func recursiveRepositoriesScan(path *string) []string {
 	return directories
 }
 
-func getDotFilePath() {
-	fmt.Println("Getting knowledge base file")
+func getUsrHomeDir() string {
+	usr, err := user.Current()
+    if err != nil {
+        log.Fatal(err)
+    }
+    return usr.HomeDir
 }
 
-func addNewRepositoriesToFile() {
-	fmt.Println("Adding newly scanned repositories")
+func createDotFileIfDoesNotExist(dotFilePath string) {
+	file, err := os.OpenFile(dotFilePath,os.O_RDWR|os.O_EXCL|os.O_CREATE, 0644)
+
+	if err != nil {
+		if os.IsExist(err) {
+			fmt.Println("File already exists, Skipping file creation")
+			return
+		}
+		fmt.Println("Error creating file")
+	}
+	file.Close()
+}
+
+func writeToDotFile(dotFilePath string, gitDirectories []string) {
+	file, err := os.OpenFile(dotFilePath, os.O_RDWR, 0644)
+	if err != nil {
+		fmt.Println("Error opening file : ", err)
+		return
+	}
+	fmt.Println("File opened successfully")
+
+	_, err = file.WriteString("Hello World!")
+	if err != nil {
+		fmt.Println("Error writing to file : ", err)
+		return
+	}
+	file.Close()
+}
+
+func addNewRepositoriesToDotFile(gitDirectories []string) {
+	const dotFileName = ".gogitlocalstats"
+	usrHomeDir := getUsrHomeDir()
+	dotFilePath := usrHomeDir + "/" + dotFileName
+	createDotFileIfDoesNotExist(dotFilePath)
+	writeToDotFile(dotFilePath, gitDirectories)
 }
 
 func scan(path *string) {
 	fmt.Println("Scanning ", *path, " for git repositories")
-	recursiveRepositoriesScan(path)
-
-	getDotFilePath()
-	addNewRepositoriesToFile()
+	gitDirectories := recursiveRepositoriesScan(path)
+	addNewRepositoriesToDotFile(gitDirectories)
 	fmt.Println("Successfully added add repositories under ", *path, "to knowledge base.")
 }
 
