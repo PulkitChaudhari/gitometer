@@ -7,6 +7,7 @@ import (
 	"strings"
 	"log"
 	"os/User"
+	"bufio"
 )
 
 func stats(email *string) {
@@ -67,7 +68,26 @@ func createDotFileIfDoesNotExist(dotFilePath string) {
 	file.Close()
 }
 
-func writeToDotFile(dotFilePath string, gitDirectories []string) {
+func sliceContains(parsedDotFileSlice []string, directory string) bool {
+	for _, dir := range parsedDotFileSlice {
+		if dir == directory {
+			return true
+		}
+	}
+	return false
+}
+
+func joinDirectories(parsedDotFileSlice []string, gitDirectories []string) []string {
+
+	for _,directory := range gitDirectories {
+		if !sliceContains(parsedDotFileSlice,directory) {
+			parsedDotFileSlice = append(parsedDotFileSlice,directory)
+		}
+	}
+	return parsedDotFileSlice
+}
+
+func writeToDotFile(parsedDotFileSlice []string, dotFilePath string, gitDirectories []string) {
 	file, err := os.OpenFile(dotFilePath, os.O_RDWR, 0644)
 	if err != nil {
 		fmt.Println("Error opening file : ", err)
@@ -75,12 +95,33 @@ func writeToDotFile(dotFilePath string, gitDirectories []string) {
 	}
 	fmt.Println("File opened successfully")
 
-	_, err = file.WriteString("Hello World!")
-	if err != nil {
-		fmt.Println("Error writing to file : ", err)
-		return
+	parsedDotFileSlice = joinDirectories(parsedDotFileSlice,gitDirectories)
+
+	for _,gitDirectory := range parsedDotFileSlice {
+		_, err = file.WriteString(gitDirectory + "\n")
+		if err != nil {
+			fmt.Println("Error writing to file : ", err)
+			return
+		}
 	}
 	file.Close()
+}
+
+func parseDotFileToSlice(dotFilePath string) []string {
+	file, err := os.Open(dotFilePath)
+	if err != nil {
+		fmt.Println("Error opening file : ", err)
+	}
+	scanner := bufio.NewScanner(file)
+	parsedDotFile := []string{}
+	for scanner.Scan() {
+		line := scanner.Text()
+		parsedDotFile = append(parsedDotFile,line)
+	}
+	if err := scanner.Err(); err != nil {
+		fmt.Println("Error scanning file : ", err)
+	}
+	return parsedDotFile
 }
 
 func addNewRepositoriesToDotFile(gitDirectories []string) {
@@ -88,7 +129,8 @@ func addNewRepositoriesToDotFile(gitDirectories []string) {
 	usrHomeDir := getUsrHomeDir()
 	dotFilePath := usrHomeDir + "/" + dotFileName
 	createDotFileIfDoesNotExist(dotFilePath)
-	writeToDotFile(dotFilePath, gitDirectories)
+	parsedDotFileSlice := parseDotFileToSlice(dotFilePath)
+	writeToDotFile(parsedDotFileSlice, dotFilePath, gitDirectories)
 }
 
 func scan(path *string) {
