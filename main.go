@@ -10,13 +10,9 @@ import (
 	"bufio"
 )
 
-func stats(email *string) {
-	fmt.Println("Statistics for ", *email, " are as follows : ")
-}
+func recursiveRepositoriesScan(path string) []string {
 
-func recursiveRepositoriesScan(path *string) []string {
-
-	entries, err := os.ReadDir(*path)
+	entries, err := os.ReadDir(path)
 
 	if err != nil {
 		fmt.Println(err)
@@ -30,15 +26,15 @@ func recursiveRepositoriesScan(path *string) []string {
 		if entry.IsDir() {
 
 			if entry.Name() == ".git" {
-				fmt.Println("Found git project at ", *path)
-				directories = append(directories,*path)
+				fmt.Println("Found git project at ", path)
+				directories = append(directories,path)
 			} else {
 				var builder strings.Builder
-				builder.WriteString(*path)
+				builder.WriteString(path)
 				builder.WriteString("/")
 				builder.WriteString(entry.Name())
 				subPath := builder.String()
-				subPathDirectories := recursiveRepositoriesScan(&subPath)
+				subPathDirectories := recursiveRepositoriesScan(subPath)
 				directories = append(directories,subPathDirectories...)
 			}
 		}
@@ -124,20 +120,54 @@ func parseDotFileToSlice(dotFilePath string) []string {
 	return parsedDotFile
 }
 
-func addNewRepositoriesToDotFile(gitDirectories []string) {
+func getDotFilePath() string {
 	const dotFileName = ".gogitlocalstats"
 	usrHomeDir := getUsrHomeDir()
 	dotFilePath := usrHomeDir + "/" + dotFileName
+	return dotFilePath
+}
+
+func addNewRepositoriesToDotFile(gitDirectories []string) {
+	dotFilePath := getDotFilePath()
 	createDotFileIfDoesNotExist(dotFilePath)
 	parsedDotFileSlice := parseDotFileToSlice(dotFilePath)
 	writeToDotFile(parsedDotFileSlice, dotFilePath, gitDirectories)
 }
 
-func scan(path *string) {
-	fmt.Println("Scanning ", *path, " for git repositories")
+func scan(path string) {
+	fmt.Println("Scanning ", path, " for git repositories")
 	gitDirectories := recursiveRepositoriesScan(path)
 	addNewRepositoriesToDotFile(gitDirectories)
-	fmt.Println("Successfully added add repositories under ", *path, "to knowledge base.")
+	fmt.Println("Successfully added add repositories under ", path, "to knowledge base.")
+}
+
+func fillCommits(email string, path string, commitMap map[int]int) map[int]int {
+	return make(map[int]int, 30)
+}
+
+func processRepositories(email string) map[int]int {
+	dotFilePath := getDotFilePath()
+	gitRepoDirectories := parseDotFileToSlice(dotFilePath)
+	daysInMap := 30
+	commitMap := make(map[int]int,daysInMap)
+	for i := 0; i < daysInMap; i++ {
+		commitMap[i] = 0
+	}
+	for _, path := range gitRepoDirectories {
+		commitMap = fillCommits(email,path,commitMap)
+	}
+	return commitMap
+}
+
+func printCommitStats(commits []string) {
+	fmt.Println("printCommitStats called")
+}
+
+func stats(email string) {
+	commitMap := processRepositories(email)
+	for i := 0; i < 30; i++ {
+		fmt.Println(commitMap[i])
+	}
 }
 
 func main() {
@@ -145,8 +175,8 @@ func main() {
 	var addFlag = flag.String("add","", "add folder for Gitometer statistics")
 	flag.Parse()
 	if *addFlag != "" {
-		scan(addFlag)
+		scan(*addFlag)
 		return
 	}
-	stats(statsFlag)
+	stats(*statsFlag)
 }
